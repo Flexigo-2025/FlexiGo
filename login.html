@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Car Rental Login</title>
+  <style>
+    /* Body background and center content */
+    body {
+      background-color: #45ecb5; /* Tailwind green-500 */
+      display: flex;
+      height: 100vh;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif, sans-serif;
+    }
+
+    /* Login box styling */
+    .login-box {
+      background-color: #d4f5d4; /* Tailwind green-100 */
+      padding: 2.5rem 3rem;
+      border-radius: 12px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+      width: 400px;
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 1.5rem;
+      color: #065f46; /* dark green */
+    }
+
+    /* Input field */
+    .input-field {
+      width: 100%;
+      padding: 0.85rem;
+      font-size: 1rem;
+      margin-bottom: 1.2rem;
+      border-radius: 8px;
+      border: 1.5px solid #4ade80; /* green-400 */
+      outline-color: #22c55e;
+      transition: border-color 0.3s;
+    }
+
+    .input-field:focus {
+      border-color: #16a34a; /* green-600 */
+      box-shadow: 0 0 6px #16a34aaa;
+    }
+
+    /* Button styling */
+    .btn {
+      background-color: #22c55e; /* green-500 */
+      color: white;
+      padding: 0.85rem;
+      font-size: 1.1rem;
+      font-weight: bold;
+      width: 100%;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .btn:hover {
+      background-color: #16a34a; /* green-600 */
+    }
+
+    .btn:active {
+      background-color: #15803d; /* green-700 */
+    }
+.input-field, .btn {
+    width: 100%;  /* full width inside login box */
+    box-sizing: border-box; /* includes padding in width */
+  }
+
+  /* Add a bit more spacing between input and button */
+  .input-field {
+    margin-bottom: 1.5rem;
+  }
+    
+  </style>
+</head>
+<body>
+
+<div class="login-box">
+  <h2>Login / Sign Up</h2>
+  <input id="phone" type="tel" placeholder="Enter your phone number" class="input-field" />
+  <div id="errorMsg" style="color: red; font-size: 0.9rem; margin-top: -0.8rem; margin-bottom: 1rem; height: 1.2rem;"></div>
+  <button id="loginBtn" class="btn" style="width: 200px;">Login</button>
+</div>
+
+<script>
+  const loginBtn = document.getElementById('loginBtn');
+  const phoneInput = document.getElementById('phone');
+  const errorMsg = document.getElementById('errorMsg');
+
+  function doLogin() {
+    const phone = phoneInput.value.trim();
+
+    // Reset error first
+    errorMsg.textContent = '';
+
+    if (phone.length !== 10 || !/^\d{10}$/.test(phone)) {
+      errorMsg.textContent = 'Please enter a valid 10-digit phone number';
+      return;
+    }
+
+    // Passed validation
+    const fakeToken = 'abc123xyzTOKEN';
+    localStorage.setItem('userToken', fakeToken);
+    localStorage.setItem('userPhone', phone);
+
+    alert('Logged in successfully! Token saved.');
+    console.log('Token:', localStorage.getItem('userToken'));
+    console.log('Phone:', localStorage.getItem('userPhone'));
+  }
+
+  loginBtn.addEventListener('click', doLogin);
+
+  phoneInput.addEventListener('keypress', function(event) {
+    if (event.key === 'Enter') {
+      doLogin();
+    }
+  });
+</script>
+
+</body>
+</html>

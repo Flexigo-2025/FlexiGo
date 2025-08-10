@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlexiGo - Idle Car Sharing</title>
+  <link href="https://unpkg.com/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    html {
+      scroll-behavior: smooth;
+      scroll-padding-top: 80px;
+    }
+
+    .sticky-note {
+      position: absolute;
+      height: 20rem;
+      width: 420px;
+      padding: 1.5rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+      transition: transform 0.9s ease, opacity 0.9s ease, left 0.9s ease, z-index 0.5s ease;
+      will-change: transform, opacity, left;
+    }
+
+    .note-left {
+      left: 8rem;
+      top: 2rem;
+      transform: scale(0.95);
+      opacity: 0.4;
+      z-index: 1;
+    }
+
+    .note-center {
+      left: 50%;
+      top: 0;
+      transform: translateX(-50%) scale(1.05);
+      opacity: 1;
+      z-index: 10;
+    }
+
+    .note-right {
+      left: calc(100% - 550px);
+      top: 2rem;
+      transform: scale(0.95);
+      opacity: 0.4;
+      z-index: 1;
+    }
+
+    .note-hidden {
+      left: 50%;
+      transform: translateX(-50%) scale(0.8);
+      opacity: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .punch-strip {
+  position: absolute;
+  top: 0.5rem;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 0.8rem;
+  z-index: 10;
+}
+
+.punch-hole {
+  width: 0.8rem;
+  height: 0.8rem;
+  border: 2px solid gray;
+  border-radius: 50%;
+  background: white;
+}
+  </style>
+
+<style>
+  @keyframes moveCarAcross {
+  0% { transform: translateX(-30vw); }
+  100% { transform: translateX(100vw); }
+}
+
+@keyframes puffMove {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scaleX(-1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-25px) scaleX(-1);
+  }
+}
+
+.flipped-puff {
+  display: inline-block;
+  animation: puffMove 0.7s ease-out infinite;
+  font-size: 3rem;     
+  position: absolute;  
+  left: -40px;             
+  top: 45%;            
+}
+
+.car-animation {
+  position: absolute;
+  bottom: 2rem;
+  left: 0;
+  top: 40%;
+  z-index: 0; /* behind search box */
+  display: flex;
+  align-items: center;
+  animation: moveCarAcross 15s linear infinite;
+}
+
+.car-image {
+  height: 220px;
+  transform: scaleX(-1); /* 👈 MIRROR the image to face right */
+}
+
+</style>
+
+<style>.glow-text {
+  text-shadow:
+    0 0 2px #22c55e,   /* green glow */
+    0 0 5px #22c55e,
+    0 0 15px #16a34a;
+}
+</style>
+
+<style>
+  .embossed-text {
+    color: #444;
+    font-weight: 700;
+    background-color: #f9f6f2;
+    padding: 8px 20px;
+    border-radius: 999px;
+    display: inline-block;
+    font-family: 'Georgia', serif;
+    text-shadow:
+      2px 2px 3px rgba(0, 0, 0, 0.2),
+     -2px -2px 3px rgba(255, 255, 255, 0.8);
+  }
+</style>
+
+<style>
+  #citySuggestions {
+    max-height: 155px;      /* dropdown max height */
+    overflow-y: auto;       /* vertical scroll if too tall */
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    width: 720px;           /* adjust width to match input */
+    position: absolute;     /* make sure dropdown floats */
+    z-index: 1000;          /* stay on top */
+  }
+</style>
+
+<style>.rotating-wheel {
+  animation: spin 3s linear infinite;
+  transform-origin: center center; /* rotate around center */
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+</style>
+
+<style>
+.glow-full {
+  box-shadow: 0 0 20px 8px rgba(250, 204, 21, 0.8) !important;
+  transition: box-shadow 0.4s ease;
+}
+</style>
+</head>
+
+<body class="bg-[#2a8554] text-gray-500 scroll-pt-20">
+  <!-- NAVBAR -->
+  <nav class="bg-green-500 text-white p-4 shadow-xl sticky top-0 z-50">
+    <div class="container mx-auto flex justify-between items-center">
+      <h1 class="text-2xl font-bold">FlexiGo</h1>
+      <ul class="flex gap-6 font-semibold">
+        <li class="relative">
+          <ul class="flex items-center gap-6 font-semibold">
+           <li>
+  <a href="login.html" class="bg-white text-green-600 px-4 py-2 rounded-md shadow hover:bg-green-100 transition text-sm font-bold">Login / Sign Up</a>
+</li>
+            <a href="#" id="menu-toggle" class="text-4xl text-white hover:text-blue-100 transition duration-200">☰</a>
+            <div id="menu-items" class="hidden fixed top-20 right-1 w-max bg-blue-100 text-gray-800 shadow-lg z-50">
+              <ul class="flex flex-col text-lg font-medium">
+                
+                <li class="border-b border-black">
+  <a href="#home" class="flex items-center gap-2 px-6 py-4 hover:bg-gray-400 transition">
+    <i data-lucide="home" class="w-5 h-5"></i>
+    Home
+  </a>
+</li>
+
+              <li class="border-b border-black">
+  <a href="user" class="flex items-center gap-2 px-6 py-4 hover:bg-gray-400 transition">
+    <i data-lucide="user" class="w-5 h-5"></i>
+    My Profile
+  </a>
+</li>
+
+             <li class="border-b border-black">
+  <a href="#file-plus" class="flex items-center gap-2 px-6 py-4 hover:bg-gray-400 transition">
+    <i data-lucide="file-plus" class="w-5 h-5"></i>
+    Register as Owner
+  </a>
+</li>
+
+              <li class="border-b border-black">
+  <a href="#calendar-check" class="flex items-center gap-2 px-6 py-4 hover:bg-gray-400 transition">
+    <i data-lucide="calendar-check" class="w-5 h-5"></i>
+    My Bookings
+  </a>
+</li>
+
+             <li class="border-b border-black">
+  <a href="#navigation" class="flex items-center gap-2 px-6 py-4 hover:bg-gray-400 transition">
+    <i data-lucide="navigation" class="w-5 h-5"></i>
+    My Car Trips
+  </a>
+</li>
+
+              <li class="border-b border-black">
+  <a href="#wallet" class="flex items-center gap-2 px-6 py-4 hover:bg-gray-400 transition">
+    <i data-lucide="wallet" class="w-5 h-5"></i>
+    Payments & Earnings
+  </a>
+</li>
+
+              <li class="border-b border-black">
+  <a href="#info" class="flex items-center gap-2 px-6 py-4 hover:bg-gray-400 transition">
+    <i data-lucide="info" class="w-5 h-5"></i>
+    About FlexiGo
+  </a>
+</li>
+
+             <li class="border-b border-black">
+  <a href="#scroll" class="flex items-center gap-2 px-6 py-4 hover:bg-gray-400 transition">
+    <i data-lucide="scroll" class="w-5 h-5"></i>
+    Policy & Conditions
+  </a>
+</li>
+
+             <li class="border-b border-black">
+  <a href="#logout" class="flex items-center gap-2 px-6 py-4 hover:bg-gray-400 transition">
+    <i data-lucide="log-out" class="w-5 h-5"></i>
+    Logout
+  </a>
+</li>
+
+              </ul>
+            </div>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+<!-- HERO SECTION -->
+<section id="home" class="relative w-100 bg-green-200 flex flex-col items-center px-4 py-32 overflow-hidden">
+
+  <div class="relative z-10 bg-green-50 bg-opacity-90 w-full rounded-2xl shadow-lg p-6 space-y-4 max-w-3xl -mt-24">
+    <h2 class="text-xl font-semibold text-gray-800">Search For a Car ✨</h2>
+
+    <!-- Search Bar -->
+    <div class="relative">
+      <div class="flex items-center border rounded-lg px-3 py-2 bg-gray-50">
+        <span class="text-gray-400 mr-2">🔍</span>
+        <input id="citySearch" type="text" placeholder="Search cars near you !!!" 
+               class="flex-grow bg-transparent outline-none text-sm text-gray-700" />
+        <span class="text-red-500 text-xl">📍</span>
+      </div>
+
+      <!-- Suggestions Dropdown -->
+      <div id="citySuggestions" 
+           class="absolute left-0 right-0 bg-white shadow rounded mt-1 max-h-40 overflow-auto z-50 hidden">
+      </div>
+    </div>
+
+    <!-- Car Type -->
+    <div>
+      <label class="text-sm font-medium text-gray-700 block mb-1">Car Type</label>
+      <select class="w-full border rounded-lg px-3 py-2 bg-gray-50 text-sm text-gray-700">
+        <option>Select Type</option>
+        <option>🚗Hatchback</option>
+        <option>🚘Sedan</option>
+        <option>🚙SUV</option>
+        <option>⚡EV</option>
+        <option>🚚Pickup</option>
+      </select>
+    </div>
+
+    <!-- Search Car Button -->
+    <button class="w-full bg-yellow-500 text-white py-3 rounded-full font-bold text-sm hover:bg-red-600 transition">
+      Search Car
+    </button>
+  </div>
+
+</section>
+
+<script>
+let cities = [];
+
+// Load cities.json
+fetch('cities.json')
+  .then(res => res.json())
+  .then(data => cities = data)
+  .catch(err => console.error("Error loading cities:", err));
+
+const searchInput = document.getElementById('citySearch');
+const suggestionBox = document.getElementById('citySuggestions');
+
+// Debounce helper
+function debounce(fn, delay) {
+  let timeoutId;
+  return function(...args) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
+function handleSearchInput() {
+  const query = searchInput.value.toLowerCase();
+  suggestionBox.innerHTML = '';
+
+  if (!query) {
+    suggestionBox.classList.add('hidden');
+    return;
+  }
+
+  const filtered = cities.filter(city => city.toLowerCase().startsWith(query));
+
+  if (filtered.length === 0) {
+    suggestionBox.classList.add('hidden');
+    return;
+  }
+
+  filtered.forEach(city => {
+    const div = document.createElement('div');
+    div.textContent = city;
+    div.className = 'px-3 py-2 bg-green-100 font-semibold hover:bg-blue-300 cursor-pointer';
+    div.onclick = () => {
+      searchInput.value = city;
+      suggestionBox.classList.add('hidden');
+    };
+    suggestionBox.appendChild(div);
+  });
+
+  suggestionBox.classList.remove('hidden');
+}
+
+searchInput.addEventListener('input', debounce(handleSearchInput, 300));
+</script>
+
+  <!-- Background Car Animation -->
+<div id="car-animation">
+  <div id="carWrapper">
+  <div class="car-animation">
+<span class="flipped-puff">💨</span>
+  <img src="car" alt="Moving Car" class="car-image" />
+  </div>
+  </div>
+</div>
+</div>
+</div>
+  </section>
+
+  <!-- TYPEWRITER SECTION -->
+  <section class="bg-green-50 py-8 px-4">
+    <div class="max-w-4xl mx-auto text-center">
+      <h2 id="typewriter-text" class="text-4xl font-bold text-black shadow inline-block opacity-0 transition-opacity duration-500"></h2>
+    </div>
+  </section>
+
+ <!-- STICKY NOTE SECTION -->
+
+<section class="bg-green-50 py-12 px-4">
+  <div class="relative w-full max-w-7xl mx-auto h-96 flex justify-center items-center">
+
+    <!-- LEFT Sticky Note -->
+<!-- LEFT Sticky Note -->
+<div id="note2" class="sticky-note note-hidden bg-blue-200">     
+     <!-- Dotted Holes -->
+      <div class="punch-strip">
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+</div>
+     <div class="mt-0 text-black h-full flex flex-col justify-center items-center text-center space-y-2">
+  <!-- Title -->
+  <div class="text-xl italic font-medium font-sans">FlexiGo – Just Business of People to People</div>
+
+  <!-- Quote -->
+<div class="relative px-4 py-2 text-base space-y-1" style="font-family: 'Bookman Old Style', serif;">
+  <!-- L-corner borders -->
+  <div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4" style="border-color: brown;"></div>
+  <div class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4" style="border-color: brown;"></div>
+
+  <!-- Each quote line as a separate div -->
+  <div>Idle cars on dust.</div>
+  <div> Riders with lust.</div>
+  <div> We connect you — with FlexiGo.</div>
+  <div>You earn & they ride. That’s the deal.</div>
+</div>
+
+
+  <!-- Slogan -->
+ <div class="px-4 py-1 border border-black bg-[#fefcf7] embossed-text text-sm tracking-wide font-light font-sans text-gray-800 shadow-[2px_2px_3px_rgba(0,0,0,0.2)]">
+  What stops you To Be Carousal?!
+</div>
+
+</div>
+
+    </div>
+
+    <!-- CENTER Sticky Note (Main One) -->
+<!-- CENTER Sticky Note -->
+<div id="note1" class="sticky-note note-hidden bg-yellow-300">      
+    <!-- Dotted Holes -->
+      <div class="punch-strip">
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+</div>
+       <div class="mt-0 text-black h-full flex flex-col justify-center items-center text-center space-y-2">
+  <!-- Title -->
+  <div class="text-xl italic font-medium font-sans">Need a Car? Flex It.</div>
+
+  
+  <!-- Quote -->
+<div class="relative px-4 py-2 text-base space-y-1" style="font-family: 'Bookman Old Style', serif;">
+  <!-- L-corner borders -->
+  <div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4" style="border-color: brown;"></div>
+  <div class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4" style="border-color: brown;"></div>
+
+  <!-- Each quote line as a separate div -->
+  <div>Rent cars in minutes — no paperwork, no wait..</div>
+  <div>Choose from your neighborhood.</div>
+  <div>Drive yourself or add a driver  .</div>
+</div>
+
+
+  <!-- Slogan -->
+  <div class="px-4 py-1 border embossed-text border-black rounded-full text-sm tracking-wide font-light font-sans">
+    Why own one when you can flex ten?
+  </div>
+</div>
+    </div>
+
+    <!-- RIGHT Sticky Note (Faded, No Rotation) -->
+<!-- RIGHT Sticky Note -->
+<div id="note3" class="sticky-note note-hidden bg-purple-300">  
+  <!-- Dotted Holes -->
+      <div class="punch-strip">
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+</div>    
+
+       <div class="mt-0 text-black h-full flex flex-col justify-center items-center text-center space-y-2">
+  <!-- Title -->
+  <div class="text-xl italic font-medium font-sans">Got a Car Just Sitting?
+  </div>
+
+  <!-- Quote -->
+<div class="relative px-4 py-2 text-base space-y-1" style="font-family: 'Bookman Old Style', serif;">
+  <!-- L-corner borders -->
+  <div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4" style="border-color: brown;"></div>
+  <div class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4" style="border-color: brown;"></div>
+
+  <!-- Each quote line as a separate div -->
+  <div>List your car.</div>
+  <div>Set your price 💰</div>
+  <div>Let FlexiGo handle the rest.</div>
+  <div>Earn while you sleep, drive when you want.</div>
+</div>
+
+  <!-- Slogan -->
+  <div class="px-4 py-1 border embossed-text border-black rounded-full text-sm tracking-wide font-light font-sans">
+    Your car. Your control. Your cash.
+  </div>
+</div>
+
+    </div>
+
+    <!-- HIDDEN Sticky Note1 (Faded, No Rotation) -->
+<!-- HIDDEN Sticky Note -->
+<div id="note4" class="sticky-note note-hidden bg-red-200">      
+  <!-- Dotted Holes -->
+      <div class="punch-strip">
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+</div>
+       <div class="mt-0 text-black h-full flex flex-col justify-center items-center text-center space-y-2">
+  <!-- Title -->
+  <div class="text-xl italic font-medium font-sans">Earn ₹15K-₹40K/Month. Seriously.</div>
+
+
+  <!-- Quote -->
+<div class="relative px-4 py-2 text-base space-y-1" style="font-family: 'Bookman Old Style', serif;">
+  <!-- L-corner borders -->
+  <div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4" style="border-color: brown;"></div>
+  <div class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4" style="border-color: brown;"></div>
+
+  <!-- Each quote line as a separate div -->
+  <div>One idle car = ₹500–₹1200/day</div>
+  <div>Weekends, peak hours, festival surge — all count</div>
+  <div>Watch your income grow.</div>
+  <div>No extra effort. Just smart use..</div>
+</div>
+
+
+  <!-- Slogan -->
+  <div class="px-4 py-1 border embossed-text border-black rounded-full text-sm tracking-wide font-light font-sans">
+   More km = more kaasu.
+  </div>
+</div>
+
+    </div>
+
+    <!-- HIDDEN Sticky Note2 (Faded, No Rotation) -->
+<!-- HIDDEN Sticky Note -->
+<div id="note5" class="sticky-note note-hidden bg-green-200">     
+   <!-- Dotted Holes -->
+      <div class="punch-strip">
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+  <span class="punch-hole"></span>
+</div>
+      <div class="mt-0 text-black h-full flex flex-col justify-center items-center text-center space-y-2">
+  <!-- Title -->
+  <div class="text-xl italic font-medium font-sans">Why FlexiGo Beats the Rest</div>
+
+  
+  <!-- Quote -->
+<div class="relative px-4 py-2 text-base space-y-1" style="font-family: 'Bookman Old Style', serif;">
+  <!-- L-corner borders -->
+  <div class="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4" style="border-color: brown;"></div>
+  <div class="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4" style="border-color: brown;"></div>
+
+  <!-- Each quote line as a separate div -->
+  <div>No hidden fees. No rental chaos.</div>
+  <div>Nearby cars, 24x7 support.</div>
+  <div>Better than cab apps.</div>
+  <div>It’s your drive, on your terms.</div>
+</div>
+
+  <!-- Slogan -->
+  <div class="px-4 py-1 border embossed-text border-black rounded-full text-sm tracking-wide font-light font-sans">
+    Flexible for moving.
+  </div>
+</div>
+
+    </div>
+
+  </div>
+</section>
+
+<!--why flexigo-->
+<section class="bg-green-50 py-12 px-4 relative flex flex-col items-center" style="height: 600px; max-width: 1500px; margin: 0 auto;">
+
+  <h2 class="text-4xl font-extrabold text-green-900 mb-24 text-center uppercase tracking-wider flex items-center justify-center gap-3 glow-text" style="z-index: 20;">
+    WHY FLEXIGO?
+  </h2>
+
+  <div class="wheel-container relative w-36 h-48 z-10" style="margin-top: 2.8rem;">
+    <img src="tyre.png" alt="FlexiGo Wheel" class="rotating-wheel w-full h-auto object-contain mx-auto" />
+  </div>
+
+  <!-- SVG lines and glowing dot -->
+  <svg width="600" height="600" style="position: absolute; top: 50%; left: 50%; 
+      transform: translate(-50%, -50%); z-index: 5;" aria-hidden="true">
+
+    <defs>
+      <filter id="yellow-glow" x="-50%" y="-50%" width="200%" height="200%">
+        <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#facc15" flood-opacity="0.4"/>
+      </filter>
+      <radialGradient id="rays" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#facc15" stop-opacity="0.6" />
+        <stop offset="100%" stop-color="#facc15" stop-opacity="0" />
+      </radialGradient>
+    </defs>
+
+    <line id="line1" x1="300" y1="300" x2="550" y2="180" stroke="#222" stroke-width="8" stroke-dasharray="12 8" />
+    <line id="line2" x1="300" y1="300" x2="550" y2="420" stroke="#222" stroke-width="8" stroke-dasharray="12 8" />
+    <line id="line3" x1="300" y1="300" x2="300" y2="580" stroke="#222" stroke-width="8" stroke-dasharray="12 8" />
+    <line id="line4" x1="300" y1="300" x2="50"  y2="420" stroke="#222" stroke-width="8" stroke-dasharray="12 8" />
+    <line id="line5" x1="300" y1="300" x2="50"  y2="180" stroke="#222" stroke-width="8" stroke-dasharray="12 8" />
+
+    <g id="glowDot" filter="url(#yellow-glow)" style="pointer-events:none;">
+  <circle id="glowCircle" r="10" fill="#fff176" />
+  <circle id="glowCircleOuter" r="16" fill="url(#rays)" opacity="0.5" />
+</g>
+
+  </svg>
+
+  <!-- Content boxes aligned around the SVG container -->
+  <div id="box1" class="content-box highlightable" style="position: absolute; top: 100px; left: 950px; 
+      height: 150px; width: 250px; background: #dcfce7; padding: 12px; border-radius: 8px; 
+      box-shadow: 0 0 8px 2px rgba(34, 197, 94, 0.4); border: 1.5px solid #22c55e; z-index:10;">
+    <h3 class="font-bold mb-2 text-green-800">Reason 1</h3>
+    <p>Flexible vehicle options for all needs.</p>
+  </div>
+
+  <div id="box2" class="content-box highlightable" style="position: absolute; top: 370px; left: 950px; 
+      height: 150px; width: 250px; background: #dcfce7; padding: 12px; border-radius: 8px; 
+      box-shadow: 0 0 8px 2px rgba(34, 197, 94, 0.4); border: 1.5px solid #22c55e; z-index:10;">
+    <h3 class="font-bold mb-2 text-green-800">Reason 2</h3>
+    <p>Affordable pricing with no hidden costs.</p>
+  </div>
+
+  <div id="box3" class="content-box highlightable" style="position: absolute; top: 600px; left: 550px; 
+      height: 150px; width: 250px; background: #dcfce7; padding: 12px; border-radius: 8px; 
+      box-shadow: 0 0 8px 2px rgba(34, 197, 94, 0.4); border: 1.5px solid #22c55e; z-index:10;">
+    <h3 class="font-bold mb-2 text-green-800">Reason 3</h3>
+    <p>Easy booking via mobile app.</p>
+  </div>
+
+  <div id="box4" class="content-box highlightable" style="position: absolute; top: 370px; left: 150px; 
+      height: 150px; width: 250px; background: #dcfce7; padding: 12px; border-radius: 8px; 
+      box-shadow: 0 0 8px 2px rgba(34, 197, 94, 0.4); border: 1.5px solid #22c55e; z-index:10;">
+    <h3 class="font-bold mb-2 text-green-800">Reason 4</h3>
+    <p>Wide vehicle variety from owners.</p>
+  </div>
+
+  <div id="box5" class="content-box highlightable" style="position: absolute; top: 100px; left: 150px; 
+      height: 150px; width: 250px; background: #dcfce7; padding: 12px; border-radius: 8px; 
+      box-shadow: 0 0 8px 2px rgba(34, 197, 94, 0.4); border: 1.5px solid #22c55e; z-index:10;">
+    <h3 class="font-bold mb-2 text-green-800">Reason 5</h3>
+    <p>Eco-friendly and optimized resource use.</p>
+  </div>
+
+</section>
+
+<script>
+  window.onload = () => {
+  const glowCircle = document.getElementById("glowCircle");
+  const glowCircleOuter = document.getElementById("glowCircleOuter"); // optional for rays fading
+
+  const lines = [
+    { line: document.getElementById("line1"), box: document.getElementById("box1") },
+    { line: document.getElementById("line2"), box: document.getElementById("box2") },
+    { line: document.getElementById("line3"), box: document.getElementById("box3") },
+    { line: document.getElementById("line4"), box: document.getElementById("box4") },
+    { line: document.getElementById("line5"), box: document.getElementById("box5") }
+  ];
+
+  const speed = 3;
+  const fadeDuration = 600; // ms
+  let currentIndex = 0;
+
+  function fadeOut(element, duration) {
+    return new Promise(resolve => {
+      let start = null;
+      function step(timestamp) {
+        if (!start) start = timestamp;
+        const elapsed = timestamp - start;
+        const progress = Math.min(elapsed / duration, 1);
+        element.style.opacity = 1 - progress;
+        if (progress < 1) {
+          requestAnimationFrame(step);
+        } else {
+          resolve();
+        }
+      }
+      requestAnimationFrame(step);
+    });
+  }
+
+  async function animateLine() {
+    const { line, box } = lines[currentIndex];
+    const length = line.getTotalLength();
+
+    let progress = 0;
+
+    // Reset glow dot opacity to 1
+    glowCircle.style.opacity = "1";
+    glowCircleOuter.style.opacity = "1";
+
+    // Animate glow dot moving forward along the line
+    await new Promise((resolve) => {
+      function step() {
+        if (progress <= length) {
+          const point = line.getPointAtLength(progress);
+          glowCircle.setAttribute("cx", point.x);
+          glowCircle.setAttribute("cy", point.y);
+          glowCircleOuter.setAttribute("cx", point.x);
+          glowCircleOuter.setAttribute("cy", point.y);
+          progress += speed;
+          requestAnimationFrame(step);
+        } else {
+          resolve();
+        }
+      }
+      step();
+    });
+
+    // Start fading out glow dot & simultaneously glow box
+    box.classList.add("glow-full");
+    await fadeOut(glowCircle, fadeDuration);
+    await fadeOut(glowCircleOuter, fadeDuration);
+
+    // After fade, hide glow dot and keep box glowing for a moment
+    glowCircle.style.opacity = "0";
+    glowCircleOuter.style.opacity = "0";
+
+    await new Promise(r => setTimeout(r, 700));
+
+    box.classList.remove("glow-full");
+
+    // Move instantly to next line start & reset glow dot opacity
+    currentIndex = (currentIndex + 1) % lines.length;
+    const nextStart = lines[currentIndex].line.getPointAtLength(0);
+    glowCircle.setAttribute("cx", nextStart.x);
+    glowCircle.setAttribute("cy", nextStart.y);
+    glowCircleOuter.setAttribute("cx", nextStart.x);
+    glowCircleOuter.setAttribute("cy", nextStart.y);
+    glowCircle.style.opacity = "1";
+    glowCircleOuter.style.opacity = "1";
+
+    // Next animation
+    animateLine();
+  }
+
+  // Start setup
+  const firstStart = lines[0].line.getPointAtLength(0);
+  glowCircle.setAttribute("cx", firstStart.x);
+  glowCircle.setAttribute("cy", firstStart.y);
+  glowCircle.style.opacity = "1";
+  glowCircleOuter.style.opacity = "1";
+
+  animateLine();
+};
+
+</script>
+
+  <!-- JS -->
+  <script>
+    const toggleBtn = document.getElementById('menu-toggle');
+    const menu = document.getElementById('menu-items');
+    toggleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      menu.classList.toggle('hidden');
+    });
+
+    const notes = [
+      document.getElementById('note1'),
+      document.getElementById('note2'),
+      document.getElementById('note3'),
+      document.getElementById('note4'),
+      document.getElementById('note5')
+    ];
+
+    let noteIndex = 0, autoSlide = true, noteInterval;
+
+    function applyNoteClasses() {
+      notes.forEach((note, i) => {
+        note.classList.remove('note-left', 'note-center', 'note-right', 'note-hidden');
+        const pos = (i - noteIndex + notes.length) % notes.length;
+        if (pos === 0) note.classList.add('note-left');
+        else if (pos === 1) note.classList.add('note-center');
+        else if (pos === 2) note.classList.add('note-right');
+        else note.classList.add('note-hidden');
+      });
+    }
+
+    function startAutoSlide() {
+      noteInterval = setInterval(() => {
+        if (autoSlide) {
+          noteIndex = (noteIndex + 1) % notes.length;
+          applyNoteClasses();
+        }
+      }, 4000);
+    }
+
+    function stopAutoSlide() {
+      autoSlide = false;
+      clearInterval(noteInterval);
+      setTimeout(() => {
+        autoSlide = true;
+        startAutoSlide();
+      }, 8000);
+    }
+
+    applyNoteClasses();
+    startAutoSlide();
+
+    const container = document.querySelector('.sticky-note').parentElement;
+    let startX = 0, isDragging = false;
+
+    container.addEventListener('pointerdown', (e) => {
+      startX = e.clientX || e.touches?.[0].clientX;
+      isDragging = true;
+      stopAutoSlide();
+    });
+
+    container.addEventListener('pointerup', (e) => {
+      if (!isDragging) return;
+      const endX = e.clientX || e.changedTouches?.[0].clientX;
+      const diff = endX - startX;
+      if (diff > 50) noteIndex = (noteIndex - 1 + notes.length) % notes.length;
+      else if (diff < -50) noteIndex = (noteIndex + 1) % notes.length;
+      applyNoteClasses();
+      isDragging = false;
+    });
+
+    container.addEventListener('pointercancel', () => isDragging = false);
+
+    const fullText = "What is FlexiGo?";
+    const target = document.getElementById("typewriter-text");
+    let textIndex = 0, typing = false;
+
+    function typeWriter() {
+      if (typing) return;
+      typing = true;
+      target.innerHTML = "";
+      textIndex = 0;
+      target.classList.remove('opacity-0');
+      const interval = setInterval(() => {
+        target.innerHTML += fullText.charAt(textIndex);
+        textIndex++;
+        if (textIndex >= fullText.length) {
+          clearInterval(interval);
+          typing = false;
+        }
+      }, 100);
+    }
+
+    window.addEventListener("DOMContentLoaded", typeWriter);
+    document.querySelectorAll('a[href="#home"]').forEach(link => link.addEventListener("click", typeWriter));
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) typeWriter();
+      });
+    }, { threshold: 0.6 });
+
+    observer.observe(target);
+  </script>
+
+<script>
+function restartCarAnimation() {
+  const carWrapper = document.getElementById("carWrapper");
+  carWrapper.style.display = "none";     // hide
+  carWrapper.offsetHeight;               // force reflow
+  carWrapper.style.display = "block";    // show → restarts animations
+}
+
+document.querySelector('a[href="#home"]').addEventListener("click", restartCarAnimation);
+window.addEventListener("load", restartCarAnimation);
+</script>
+
+</body>
+</html>
